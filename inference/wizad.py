@@ -191,11 +191,7 @@ for version in v:
                     total_lines = len(line)
                     copy_lines = int(total_lines * 1)
                     text2 = "".join(line[:copy_lines])
-                    #text2 = text2.replace("'", '"')
-                    #print(text2)
-                    #text = "'"+text2+"'"
-                    #text = "#include"
-                    text = text2
+                    text = "Complete the code:\n"+text2
 
                     repository_name = file_name.replace(".c", "")
                     repository_path3 = os.path.join(script_dir, repository_name)#V1/star/CWE_repo/
@@ -222,15 +218,16 @@ for version in v:
                         code= extract_substring(code,"#include","}")
 
                     print(code)
-                    time.sleep(10)
-                    break
+                    
+                    
 
 
 
                     input = open(os.path.join(repository_path3, "star2_" + file_name), "w",encoding='utf-8')
                     input.write(code)
                     input.close()
-
+                    time.sleep(10)
+                    break
                     
                     create_command = "/root/cppcheck/build/bin/cppcheck --xml-version=2 --enable=all "+os.path.join(repository_path3, "star2_" + file_name)+" 2> "+os.path.join(repository_path3, "cppcheck.xml")
                     print(create_command)
@@ -353,9 +350,9 @@ for version in v:
                         elapsed = end - start
                         elapsed = str(elapsed)
                         if version == "V1":
-                            answer = generationbis(text2, code, comment_error)
+                            answer = generationbis(text, code, comment_error)
                         elif version =="V2":
-                            answer = generation(text2, code, comment_error)
+                            answer = generation(text, code, comment_error)
                         print("on lance gpt")
                         code1 = open(os.path.join(repository_path3, "gpt_starcoder_"+elapsed +"_"+ file_name),"w")
                         code1.write(answer)
@@ -365,7 +362,7 @@ for version in v:
                         end = time.time()
                         elapsed = end - start
                         elapsed = str(elapsed)
-                        answer = generation2(text2, code, comment_error)
+                        answer = generation2(text, code, comment_error)
                         code1 = open(os.path.join(repository_path3, "gpt_blanc_"+elapsed+"_" + file_name),"w")
                         code1.write(answer)
                         code1.close()

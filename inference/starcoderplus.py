@@ -132,34 +132,23 @@ def extract_response(text):
     else:
         return None
 
-model_name_or_path = "TheBloke/WizardCoder-15B-1.0-GPTQ"
-# Or to load it locally, pass the local download path
-# model_name_or_path = "/path/to/models/TheBloke_WizardCoder-15B-1.0-GPTQ"
-
+device="cuda:0"
+model_name_or_path = "TheBloke/starcoderplus-GPTQ"
 use_triton = False
 
 tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, use_fast=True)
 
 model = AutoGPTQForCausalLM.from_quantized(model_name_or_path,
         use_safetensors=True,
+        trust_remote_code=True,
         device="cuda:0",
         use_triton=use_triton,
         quantize_config=None)
 
-# Prevent printing spurious transformers error when using pipeline with AutoGPTQ
-logging.set_verbosity(logging.CRITICAL)
-
-pipe = pipeline("text-generation", model=model, tokenizer=tokenizer)
-prompt_template = '''Below is an the beginning of a code. Complete the code
-
-### Instruction: {prompt}
-
-### Response:'''
 
 
 
-
-command_list=["wizard"]
+command_list=["starcoderplus"]
 v = ["V1"]
 for version in v:
     script_dir1 = os.path.dirname(os.path.abspath(__file__))
@@ -191,11 +180,7 @@ for version in v:
                     total_lines = len(line)
                     copy_lines = int(total_lines * 1)
                     text2 = "".join(line[:copy_lines])
-                    #text2 = text2.replace("'", '"')
-                    #print(text2)
-                    #text = "'"+text2+"'"
-                    #text = "#include"
-                    text = text2
+                    text = "Complete the code:\n"+text2     
 
                     repository_name = file_name.replace(".c", "")
                     repository_path3 = os.path.join(script_dir, repository_name)#V1/star/CWE_repo/
@@ -209,28 +194,25 @@ for version in v:
                         create_command =  "./build/bin/starcoder -m "+ script_dir1+ "/models/bigcode/starcoder.ggmlv3.q4_0.bin -p " +text+" --top_k 0 --top_p 0.95 --temp 0 -n 300 > "+os.path.join(repository_path3, "star_" + file_name)
                     elif model_name == "star1":
                         create_command =  "./build/bin/starcoder -m "+ script_dir1+ "/models/bigcode/starcoder.ggmlv3.q4_1.bin -p " +text+" --top_k 0 --top_p 0.95 --temp 0 -n 300 > "+os.path.join(repository_path3, "star_" + file_name)
-                    elif model_name == "starplus0":
-                        create_command =  "./build/bin/starcoder -m "+ script_dir1+ "/models/bigcode/starcoderplus.ggmlv3.q4_0.bin -p " +text+" --top_k 0 --top_p 0.95 --temp 0 -n 300 > "+os.path.join(repository_path3, "star_" + file_name)
+                    elif model_name == "starcoderplus":
+                        inputs = tokenizer.encode(text, return_tensors="pt").to(device)
+                        outputs = model.generate(inputs=inputs,temperature=0.1,max_new_tokens=300)
+                        code = extract_substring(tokenizer.decode(outputs[0]),"#include","}")
+                        
+
                     elif model_name == "starplus1":
                         create_command =  "./build/bin/starcoder -m "+ script_dir1+ "/models/bigcode/starcoderplus.ggmlv3.q4_1.bin -p " +text+" --top_k 0 --top_p 0.95 --temp 0 -n 300 > "+os.path.join(repository_path3, "star_" + file_name)
-                    elif model_name== "wizard":
-
-                        prompt = prompt_template.format(prompt=text)
-                        outputs = pipe(prompt, max_new_tokens=300, do_sample=True, temperature=0.1, top_k=50, top_p=0.95)
-                        code = outputs[0]['generated_text']
-                        code = extract_response(outputs[0]['generated_text'])
-                        code= extract_substring(code,"#include","}")
 
                     print(code)
 
-
+                    time.sleep(10)
 
 
 
                     input = open(os.path.join(repository_path3, "star2_" + file_name), "w",encoding='utf-8')
                     input.write(code)
                     input.close()
-
+                    break
                     
                     create_command = "/root/cppcheck/build/bin/cppcheck --xml-version=2 --enable=all "+os.path.join(repository_path3, "star2_" + file_name)+" 2> "+os.path.join(repository_path3, "cppcheck.xml")
                     print(create_command)
@@ -345,26 +327,15 @@ for version in v:
                     input.close()
                     
                     
-                    input = open(os.path.join(repository_path3, "star2_" + file_name), "r",encoding='utf-8')
-                    line = input.readlines()
-                    input.close()
-                    code = "".join(line[:-1])
-                    pattern = r"main: number of tokens in prompt =.*?\n\n(.*?)\n\nmain: mem per token"
-                    match = re.search(pattern, code, re.DOTALL)
-                    if match:
-                        extracted_string = match.group(1)
-                        print(extracted_string)
-                        print("generation type")
-                        print(generation_type)
-                        
+
                     if generation_type == 1:
                         end = time.time()
                         elapsed = end - start
                         elapsed = str(elapsed)
                         if version == "V1":
-                            answer = generationbis(text2, extracted_string, comment_error)
+                            answer = generationbis(text, code, comment_error)
                         elif version =="V2":
-                            answer = generation(text2, extracted_string, comment_error)
+                            answer = generation(text, code, comment_error)
                         print("on lance gpt")
                         code1 = open(os.path.join(repository_path3, "gpt_starcoder_"+elapsed +"_"+ file_name),"w")
                         code1.write(answer)
@@ -374,7 +345,7 @@ for version in v:
                         end = time.time()
                         elapsed = end - start
                         elapsed = str(elapsed)
-                        answer = generation2(text2, extracted_string, comment_error)
+                        answer = generation2(text, code, comment_error)
                         code1 = open(os.path.join(repository_path3, "gpt_blanc_"+elapsed+"_" + file_name),"w")
                         code1.write(answer)
                         code1.close()
