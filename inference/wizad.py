@@ -222,8 +222,8 @@ for version in v:
                         code= extract_substring(code,"#include","}")
 
                     print(code)
-
-
+                    time.sleep(10)
+                    break
 
 
 
@@ -345,26 +345,17 @@ for version in v:
                     input.close()
                     
                     
-                    input = open(os.path.join(repository_path3, "star2_" + file_name), "r",encoding='utf-8')
-                    line = input.readlines()
-                    input.close()
-                    code = "".join(line[:-1])
-                    pattern = r"main: number of tokens in prompt =.*?\n\n(.*?)\n\nmain: mem per token"
-                    match = re.search(pattern, code, re.DOTALL)
-                    if match:
-                        extracted_string = match.group(1)
-                        print(extracted_string)
-                        print("generation type")
-                        print(generation_type)
+   
+
                         
                     if generation_type == 1:
                         end = time.time()
                         elapsed = end - start
                         elapsed = str(elapsed)
                         if version == "V1":
-                            answer = generationbis(text2, extracted_string, comment_error)
+                            answer = generationbis(text2, code, comment_error)
                         elif version =="V2":
-                            answer = generation(text2, extracted_string, comment_error)
+                            answer = generation(text2, code, comment_error)
                         print("on lance gpt")
                         code1 = open(os.path.join(repository_path3, "gpt_starcoder_"+elapsed +"_"+ file_name),"w")
                         code1.write(answer)
@@ -374,7 +365,7 @@ for version in v:
                         end = time.time()
                         elapsed = end - start
                         elapsed = str(elapsed)
-                        answer = generation2(text2, extracted_string, comment_error)
+                        answer = generation2(text2, code, comment_error)
                         code1 = open(os.path.join(repository_path3, "gpt_blanc_"+elapsed+"_" + file_name),"w")
                         code1.write(answer)
                         code1.close()
