@@ -232,7 +232,7 @@ for version in v:
                     input.close()
 
                     
-                    create_command = "cppcheck --xml-version=2 --enable=all "+os.path.join(repository_path3, "star2_" + file_name)+" 2> "+os.path.join(repository_path3, "cppcheck.xml")
+                    create_command = "/root/cppcheck/build/bin/cppcheck --xml-version=2 --enable=all "+os.path.join(repository_path3, "star2_" + file_name)+" 2> "+os.path.join(repository_path3, "cppcheck.xml")
                     print(create_command)
                     
                     try:
@@ -380,7 +380,7 @@ for version in v:
                         code1.close()
                         last_filepath = os.path.join(repository_path3, "gpt_blanc_"+elapsed+"_" + file_name)
                         
-                    create_command = "cppcheck --xml-version=2 --enable=all "+last_filepath+" 2> "+os.path.join(repository_path3,"cppcheck2.xml" )
+                    create_command = "/root/cppcheck/build/bin/cppcheck --xml-version=2 --enable=all "+last_filepath+" 2> "+os.path.join(repository_path3,"cppcheck2.xml" )
                     
                     try:
                         os.system(create_command)
