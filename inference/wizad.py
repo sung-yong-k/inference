@@ -198,7 +198,8 @@ for version in v:
                     # Ensure the repository directory exists
                     if not os.path.exists(repository_path3):
                         os.makedirs(repository_path3)
-                        
+
+                    print("launching code")
                     if model_name == "santa":
                         create_command =  "./build/bin/starcoder -m "+ script_dir1+ "/models/bigcode/gpt_bigcode-santacoder-ggml-q4_1.bin -p " +text+" --top_k 0 --top_p 0.95 --temp 0.1 -n 300 > "+os.path.join(repository_path3, "star_" + file_name)
                     elif model_name == "star0":
@@ -210,7 +211,6 @@ for version in v:
                     elif model_name == "starplus1":
                         create_command =  "./build/bin/starcoder -m "+ script_dir1+ "/models/bigcode/starcoderplus.ggmlv3.q4_1.bin -p " +text+" --top_k 0 --top_p 0.95 --temp 0 -n 300 > "+os.path.join(repository_path3, "star_" + file_name)
                     elif model_name== "wizard":
-
                         prompt = prompt_template.format(prompt=text)
                         outputs = pipe(prompt, max_new_tokens=300, do_sample=True, temperature=0.1, top_k=50, top_p=0.95)
                         code = outputs[0]['generated_text']
