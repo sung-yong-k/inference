@@ -196,7 +196,7 @@ for version in v:
                         create_command =  "./build/bin/starcoder -m "+ script_dir1+ "/models/bigcode/starcoder.ggmlv3.q4_1.bin -p " +text+" --top_k 0 --top_p 0.95 --temp 0 -n 300 > "+os.path.join(repository_path3, "star_" + file_name)
                     elif model_name == "starcoderplus":
                         inputs = tokenizer.encode(text, return_tensors="pt").to(device)
-                        outputs = model.generate(inputs=inputs,temperature=0.1,max_new_tokens=300)
+                        outputs = model.generate(inputs=inputs, do_sample=True, temperature=0.1,max_new_tokens=300)
                         code = extract_substring(tokenizer.decode(outputs[0]),"#include","}")
                         
 
