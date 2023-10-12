@@ -7,6 +7,13 @@ import json
 import time
 import re
 from infer_test import*
+from transformers import AutoTokenizer, pipeline, logging
+from auto_gptq import AutoGPTQForCausalLM, BaseQuantizeConfig
+import argparse
+
+
+
+
 print("install openai and cppcheck and create production before before")
 key = input("Enter a key: ")
 openai.api_key = key
@@ -114,8 +121,45 @@ def extract_substring(s, start_str, end_str):
     if start_index < 0 or end_index < 0:
         return ""
     return s[start_index-8:end_index+1]
+
+def extract_response(text):
+    keyword = "### Response:"
     
-command_list=["star0","starplus0","wizard0","star1","starplus1"]
+    # Check if the keyword is in the text
+    if keyword in text:
+        # Find the index of the keyword and extract everything after it
+        return text[text.index(keyword) + len(keyword):].strip()
+    else:
+        return None
+
+model_name_or_path = "TheBloke/WizardCoder-15B-1.0-GPTQ"
+# Or to load it locally, pass the local download path
+# model_name_or_path = "/path/to/models/TheBloke_WizardCoder-15B-1.0-GPTQ"
+
+use_triton = False
+
+tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, use_fast=True)
+
+model = AutoGPTQForCausalLM.from_quantized(model_name_or_path,
+        use_safetensors=True,
+        device="cuda:0",
+        use_triton=use_triton,
+        quantize_config=None)
+
+# Prevent printing spurious transformers error when using pipeline with AutoGPTQ
+logging.set_verbosity(logging.CRITICAL)
+
+pipe = pipeline("text-generation", model=model, tokenizer=tokenizer)
+prompt_template = '''Below is an the beginning of a code. Complete the code
+
+### Instruction: {prompt}
+
+### Response:'''
+
+
+
+
+command_list=["wizard"]
 v = ["V1"]
 for version in v:
     script_dir1 = os.path.dirname(os.path.abspath(__file__))
@@ -147,10 +191,11 @@ for version in v:
                     total_lines = len(line)
                     copy_lines = int(total_lines * 1)
                     text2 = "".join(line[:copy_lines])
-                    text2 = text2.replace("'", '"')
+                    #text2 = text2.replace("'", '"')
                     #print(text2)
-                    text = "'"+text2+"'"
+                    #text = "'"+text2+"'"
                     #text = "#include"
+                    text = text2
 
                     repository_name = file_name.replace(".c", "")
                     repository_path3 = os.path.join(script_dir, repository_name)#V1/star/CWE_repo/
@@ -168,38 +213,26 @@ for version in v:
                         create_command =  "./build/bin/starcoder -m "+ script_dir1+ "/models/bigcode/starcoderplus.ggmlv3.q4_0.bin -p " +text+" --top_k 0 --top_p 0.95 --temp 0 -n 300 > "+os.path.join(repository_path3, "star_" + file_name)
                     elif model_name == "starplus1":
                         create_command =  "./build/bin/starcoder -m "+ script_dir1+ "/models/bigcode/starcoderplus.ggmlv3.q4_1.bin -p " +text+" --top_k 0 --top_p 0.95 --temp 0 -n 300 > "+os.path.join(repository_path3, "star_" + file_name)
-                    elif model_name== "wizard0":
-                            create_command = "./build/bin/starcoder -m "+ script_dir1+ "/models/bigcode/WizardCoder-15B-1.0.ggmlv3.q4_0.bin -p " +text+" --top_k 0 --top_p 0. --temp 0.1 -n 300 > "+os.path.join(repository_path3, "star_" + file_name)
-                    
-                    print("create command:")
-                    print(create_command)
-                    try:
-                        print("launch "+model_name)
-                        os.system(create_command)
-                    except Exception as e:
-                        print(e)
-                        break
-                    
-                    input = open(os.path.join(repository_path3, "star_" + file_name), "r",encoding='utf-8')
-                    line = input.readlines()
-                    input.close()
-                    code = "".join(line)
-                    pattern = r"main: number of tokens in prompt =.*?\n\n(.*?)\n\nmain: mem per token"
+                    elif model_name== "wizard":
+
+                        prompt = prompt_template.format(prompt=text)
+                        outputs = pipe(prompt, max_new_tokens=300, do_sample=True, temperature=0.1, top_k=50, top_p=0.95)
+                        code = outputs[0]['generated_text']
+                        code = extract_response(outputs[0]['generated_text'])
+                        code= extract_substring(code,"#include","}")
+
                     print(code)
-                    match = re.search(pattern, code, re.DOTALL)
-                    if match:
-                        extracted_string = match.group(1)
-                        #print(extracted_string)
-                        input = open(os.path.join(repository_path3, "star2_" + file_name), "w",encoding='utf-8')
-                        extracted_string= extract_substring(extracted_string,"#include","}")
-                        extracted_string = balance_c_code(extracted_string)
-                        input.write(extracted_string)
-                        input.close()
-                    else:
-                        break
+
+
+
+
+
+                    input = open(os.path.join(repository_path3, "star2_" + file_name), "w",encoding='utf-8')
+                    input.write(code)
+                    input.close()
+
                     
-                    
-                    create_command = "cppcheck --xml-version=2 --enable=all "+os.path.join(repository_path3, "star2_" + file_name)+" 2> "+os.path.join(repository_path3, "cppcheck.xml")
+                    create_command = "/root/cppcheck/build/bin/cppcheck --xml-version=2 --enable=all "+os.path.join(repository_path3, "star2_" + file_name)+" 2> "+os.path.join(repository_path3, "cppcheck.xml")
                     print(create_command)
                     
                     try:
@@ -210,7 +243,6 @@ for version in v:
                     
                     try:
                         create_command = "infer run --bufferoverrun --pulse  -- gcc -c "+os.path.join(repository_path3, "star2_" + file_name)
-                        os.system(create_command)
                     except:
                         print(e)
                         print("infer failed")
@@ -348,7 +380,7 @@ for version in v:
                         code1.close()
                         last_filepath = os.path.join(repository_path3, "gpt_blanc_"+elapsed+"_" + file_name)
                         
-                    create_command = "cppcheck --xml-version=2 --enable=all "+last_filepath+" 2> "+os.path.join(repository_path3,"cppcheck2.xml" )
+                    create_command = "/root/cppcheck/build/bin/cppcheck --xml-version=2 --enable=all "+last_filepath+" 2> "+os.path.join(repository_path3,"cppcheck2.xml" )
                     
                     try:
                         os.system(create_command)
